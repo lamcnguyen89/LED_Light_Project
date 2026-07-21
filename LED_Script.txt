@@ -1,0 +1,5 @@
+# Command to Start LED Virtual Environment
+source ledenv/bin/activate
+
+# Command to Start Script after startine Virtual Environment
+sudo /home/malneyugnfl/ledenv/bin/python3 LED_Code.py
