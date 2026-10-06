@@ -1,0 +1,9 @@
+# Runtime dependencies for Raspberry Pi 3B / 3B+ (Python 3.9+).
+# Images and animated GIFs; Image.Resampling requires Pillow 9.1+.
+Pillow>=9.1.0
+
+# WS281x LED strip control, including GPIO18 PWM on Raspberry Pi 3B.
+rpi-ws281x>=5.0.0
+
+# Video decoding (cv2); NumPy is installed automatically as a dependency.
+opencv-python>=4.6.0

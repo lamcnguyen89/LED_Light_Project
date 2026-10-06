@@ -1,0 +1,19 @@
+[Unit]
+Description=LED art matrix player
+After=local-fs.target
+RequiresMountsFor="@PROJECT_ROOT@"
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+# GPIO18 PWM through rpi_ws281x requires root access.
+User=root
+WorkingDirectory="@PROJECT_ROOT@"
+ExecStart="@PROJECT_ROOT@/ledenv/bin/python" -u "@PROJECT_ROOT@/LED_Code.py"
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
