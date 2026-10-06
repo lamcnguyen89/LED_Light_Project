@@ -218,7 +218,7 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Input folder
-/Input/
+Input/
 
 # Local WebUI test environment and Raspberry Pi runtime environment
 .venv-webui/

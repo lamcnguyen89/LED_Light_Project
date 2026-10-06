@@ -99,6 +99,8 @@ def main() -> None:
         LED_BRIGHTNESS,
         LED_CHANNEL,
     )
+    
+    INPUT_FOLDER.mkdir(parents=True, exist_ok=True)
     strip.begin()
 
     print(f"Watching {INPUT_FOLDER}. Press Ctrl+C to stop.")
