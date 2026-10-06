@@ -1,3 +1,11 @@
+# Virtual environment prerequisite on Raspberry Pi OS (installed via apt, not pip):
+#   sudo apt-get update
+#   sudo apt-get install -y python3-venv
+# Then create the environment and install these Python packages:
+#   python3 -m venv ledenv
+#   ledenv/bin/python -m pip install -r requirements.txt
+# Alternatively, sudo bash systemd/install_ledart.sh handles all of these steps.
+
 # Runtime dependencies for Raspberry Pi 3B / 3B+ (Python 3.9+).
 # Images and animated GIFs; Image.Resampling requires Pillow 9.1+.
 Pillow>=9.1.0
@@ -7,3 +15,7 @@ rpi-ws281x>=5.0.0
 
 # Video decoding (cv2); NumPy is installed automatically as a dependency.
 opencv-python>=4.6.0
+
+# Browser media management, served by Waitress.
+Flask>=3.1,<4
+waitress>=3.0,<4

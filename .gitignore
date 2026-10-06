@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local WebUI test environment and Raspberry Pi runtime environment
+.venv-webui/
+ledenv/
+Input/.upload-*.tmp

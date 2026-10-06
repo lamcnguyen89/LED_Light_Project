@@ -1,0 +1,28 @@
+[Unit]
+Description=LED art media WebUI
+After=network.target
+RequiresMountsFor="@PROJECT_ROOT@"
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+# Installer chooses the invoking non-root user (or an unprivileged fallback).
+User=@WEB_USER@
+WorkingDirectory=@PROJECT_ROOT@
+Environment=LEDART_WEB_HOST=0.0.0.0
+Environment=LEDART_WEB_PORT=8080
+ExecStart="@PROJECT_ROOT@/ledenv/bin/python" -u "@PROJECT_ROOT@/web_ui.py"
+Restart=on-failure
+RestartSec=10
+UMask=0022
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths="@PROJECT_ROOT@/Input"
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

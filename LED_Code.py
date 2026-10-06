@@ -1,10 +1,10 @@
 from pathlib import Path
-from time import sleep
+from time import monotonic, sleep
 
 from PIL import Image, ImageOps
 from rpi_ws281x import Color, PixelStrip
 
-from media_player import MEDIA_EXTENSIONS, is_media_file, play_media_file
+from media_player import MEDIA_EXTENSIONS, is_media_file, play_media_file, wait_for_stop
 
 
 # LED matrix configuration
@@ -24,6 +24,7 @@ INPUT_FOLDER = Path(__file__).resolve().parent / "Input"
 IMAGE_EXTENSIONS = {".bmp", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp"}
 SUPPORTED_EXTENSIONS = IMAGE_EXTENSIONS | MEDIA_EXTENSIONS
 DISPLAY_SECONDS = 600
+INPUT_POLL_SECONDS = 1.0
 
 
 def find_display_files(folder: Path) -> list[Path]:
@@ -40,10 +41,20 @@ def find_display_files(folder: Path) -> list[Path]:
         key=lambda path: path.name.lower(),
     )
 
-    if not display_files:
-        raise FileNotFoundError(f"No supported images or videos found in: {folder}")
-
     return display_files
+
+
+def scan_display_files(folder: Path) -> dict[Path, tuple[int, int]]:
+    """Snapshot filenames, modification times and sizes without loading images."""
+    snapshot = {}
+    for path in find_display_files(folder):
+        try:
+            stat = path.stat()
+        except FileNotFoundError:
+            # A file may be removed between listing the folder and reading its stat.
+            continue
+        snapshot[path] = (stat.st_mtime_ns, stat.st_size)
+    return snapshot
 
 
 def xy_to_led_index(x: int, y: int) -> int:
@@ -79,8 +90,6 @@ def display_image(strip: PixelStrip, image: Image.Image) -> None:
     strip.show()
 
 def main() -> None:
-    display_paths = find_display_files(INPUT_FOLDER)
-
     strip = PixelStrip(
         LED_COUNT,
         LED_PIN,
@@ -92,23 +101,58 @@ def main() -> None:
     )
     strip.begin()
 
-    print(f"Found {len(display_paths)} display file(s). Press Ctrl+C to stop.")
+    print(f"Watching {INPUT_FOLDER}. Press Ctrl+C to stop.")
+    previous_snapshot = {}
     while True:
+        snapshot = scan_display_files(INPUT_FOLDER)
+        if not snapshot:
+            previous_snapshot = snapshot
+            sleep(INPUT_POLL_SECONDS)
+            continue
+
+        # Show newly added or replaced files first, then resume the slideshow.
+        changed_paths = [
+            path for path in snapshot
+            if previous_snapshot.get(path) != snapshot[path]
+        ]
+        display_paths = changed_paths + [
+            path for path in snapshot if path not in changed_paths
+        ]
+        previous_snapshot = snapshot
+        next_scan = 0.0
+
+        def input_changed() -> bool:
+            nonlocal next_scan
+            now = monotonic()
+            if now < next_scan:
+                return False
+            next_scan = now + INPUT_POLL_SECONDS
+            return scan_display_files(INPUT_FOLDER) != snapshot
+
         for display_path in display_paths:
+            if input_changed():
+                break
             print(f"Displaying {display_path.name} on the LED matrix")
-
-            if is_media_file(display_path):
-                play_media_file(
-                    display_path,
-                    lambda image: display_image(strip, image),
-                    (MATRIX_WIDTH, MATRIX_HEIGHT),
-                    DISPLAY_SECONDS,
-                )
-                continue
-
-            image = load_image(display_path)
-            display_image(strip, image)
-            sleep(DISPLAY_SECONDS)
+            try:
+                if is_media_file(display_path):
+                    play_media_file(
+                        display_path,
+                        lambda image: display_image(strip, image),
+                        (MATRIX_WIDTH, MATRIX_HEIGHT),
+                        DISPLAY_SECONDS,
+                        should_stop=input_changed,
+                    )
+                else:
+                    image = load_image(display_path)
+                    display_image(strip, image)
+                    wait_for_stop(DISPLAY_SECONDS, input_changed)
+            except (OSError, ValueError, RuntimeError) as exc:
+                # Uploads may be incomplete or disappear while being opened.
+                print(f"Skipping {display_path.name}: {exc}")
+                sleep(INPUT_POLL_SECONDS)
+            # Check directly so a cached poll cannot hide a detected change.
+            if scan_display_files(INPUT_FOLDER) != snapshot:
+                break
 
 
 if __name__ == "__main__":

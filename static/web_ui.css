@@ -1,0 +1,49 @@
+:root { color-scheme: dark; --bg: #101715; --panel: #1a2420; --line: #35453d; --text: #eef5ee; --muted: #a6b7ac; --accent: #c3f07b; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, sans-serif; }
+main { max-width: 1160px; margin: auto; padding: 48px 28px 24px; }
+header { margin-bottom: 36px; }
+.eyebrow { color: var(--accent); font: 12px/1.5 ui-monospace, monospace; letter-spacing: .14em; display: flex; align-items: center; gap: 10px; }
+.indicator { width: 8px; height: 8px; background: var(--accent); box-shadow: 0 0 16px #c3f07580; border-radius: 50%; }
+h1 { margin: 14px 0 8px; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.045em; font-weight: 650; }
+h2 { font-size: 20px; margin: 0; font-weight: 600; }
+h3 { margin: 0 0 6px; }
+p { margin: 6px 0; }
+.intro, .upload-panel p, .hint, footer { color: var(--muted); }
+.upload-panel { border: 1px solid var(--line); border-radius: 16px; padding: 24px; background: var(--panel); margin-bottom: 28px; }
+#upload-form { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin: 22px 0 12px; }
+.file-label { font-size: 14px; }
+input[type=file] { flex: 1; min-width: 190px; max-width: 100%; color: var(--muted); }
+input::file-selector-button { padding: 9px 12px; margin-right: 12px; border-radius: 7px; border: 1px solid var(--line); background: var(--bg); color: var(--text); cursor: pointer; }
+button { font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 10px 18px; background: var(--accent); color: #17210e; cursor: pointer; }
+button:hover { filter: brightness(1.1); }
+button:disabled { opacity: .5; cursor: wait; }
+button.secondary { background: transparent; border: 1px solid var(--line); color: var(--text); }
+button.danger { background: #eea89b; color: #3a1610; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.hint { font-size: 13px; }
+.library-toolbar { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin: 30px 0 22px; }
+.count { display: inline-block; color: var(--accent); background: #c3f07b15; padding: 1px 10px; border-radius: 20px; font-size: 14px; margin-left: 8px; vertical-align: middle; }
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(245px, 1fr)); gap: 20px; }
+.card { border: 1px solid var(--line); background: var(--panel); border-radius: 12px; overflow: hidden; }
+.preview { height: 210px; background: #080d0a; display: flex; align-items: center; justify-content: center; }
+.preview img { max-height: 100%; max-width: 100%; object-fit: contain; }
+.card-body { padding: 18px; }
+.filename { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; margin: 0; }
+.file-meta { color: var(--muted); font-size: 12px; margin: 6px 0 16px; }
+.card-bottom { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.matrix { width: 80px; height: 60px; object-fit: contain; image-rendering: pixelated; background: #080d0a; border: 1px solid var(--line); border-radius: 3px; }
+.matrix-label { color: var(--muted); font: 10px ui-monospace, monospace; margin: 5px 0 0; }
+.delete-button { background: transparent; color: #efb3a8; border: 1px solid #efb3a840; padding: 7px 12px; font-size: 13px; }
+.empty { text-align: center; padding: 65px 20px; border: 1px dashed var(--line); border-radius: 12px; color: var(--muted); }
+.empty h3 { color: var(--text); }
+#message { padding: 14px 18px; border: 1px solid var(--line); border-radius: 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
+#message.error { color: #ffd0c5; border-color: #a35c4d; }
+.preview-error { font-size: 13px; color: #efb3a8; padding: 20px; text-align: center; }
+footer { font-size: 12px; border-top: 1px solid var(--line); margin-top: 48px; padding-top: 20px; }
+dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 14px; width: min(440px, 90vw); padding: 28px; }
+dialog::backdrop { background: #000a; }
+#delete-description { overflow-wrap: anywhere; margin: 16px 0; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+[hidden] { display: none !important; }
+@media (max-width: 560px) { main { padding: 28px 18px; } .upload-panel { padding: 18px; } #upload-form { align-items: stretch; } #upload-button { width: 100%; } .file-label { width: 100%; } .gallery { grid-template-columns: 1fr; } }

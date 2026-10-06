@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>LED media library</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='web_ui.css') }}">
+  <script src="{{ url_for('static', filename='web_ui.js') }}" defer></script>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="eyebrow"><span class="indicator"></span> 20 × 15 LED MATRIX</div>
+      <h1>Your media, on display.</h1>
+      <p class="intro">Add images and GIFs to your matrix, or make room for something new.</p>
+    </header>
+    <section class="upload-panel" aria-labelledby="upload-heading">
+      <div>
+        <h2 id="upload-heading">Add to your library</h2>
+        <p>Changes reach the matrix automatically. GIFs keep their animation.</p>
+      </div>
+      <form id="upload-form">
+        <label class="file-label" for="files">Choose images or GIFs</label>
+        <input id="files" name="files" type="file" accept="{{ accept }}" multiple required>
+        <button id="upload-button" type="submit">Upload files</button>
+      </form>
+      <p class="hint">Supported: {{ extensions }}. Up to 32 MiB per upload batch.</p>
+    </section>
+    <div id="message" role="status" aria-live="polite" hidden></div>
+    <section aria-labelledby="library-heading">
+      <div class="library-toolbar">
+        <div><h2 id="library-heading">Input library <span id="count" class="count">0</span></h2>
+          <p class="hint">Matrix previews show the first frame, cropped to 20 × 15 pixels.</p>
+        </div>
+        <button id="refresh" class="secondary" type="button">Refresh</button>
+      </div>
+      <p id="loading">Loading your library…</p>
+      <div id="empty" class="empty" hidden>
+        <h3>A little light starts here.</h3>
+        <p>Upload your first image or GIF to add it to the slideshow.</p>
+      </div>
+      <div id="gallery" class="gallery"></div>
+    </section>
+    <footer>Local media manager · Images and GIFs in Input · Existing videos stay in the slideshow</footer>
+  </main>
+  <dialog id="delete-dialog" aria-labelledby="delete-heading">
+    <h2 id="delete-heading">Delete this file?</h2>
+    <p id="delete-description"></p>
+    <p class="hint">It will be removed from Input and from the slideshow.</p>
+    <div class="dialog-actions">
+      <button id="cancel-delete" class="secondary" type="button">Keep file</button>
+      <button id="confirm-delete" class="danger" type="button">Delete file</button>
+    </div>
+  </dialog>
+  <noscript><p>This media manager needs JavaScript enabled to upload and delete files.</p></noscript>
+</body>
+</html>

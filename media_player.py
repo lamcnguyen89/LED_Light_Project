@@ -11,6 +11,19 @@ MEDIA_EXTENSIONS = GIF_EXTENSIONS | VIDEO_EXTENSIONS
 PLAYBACK_SLOWDOWN = 5.0 # Multiplier to slow down playback speed
 
 DisplayFrame = Callable[[Image.Image], None]
+StopPlayback = Callable[[], bool]
+
+
+def wait_for_stop(seconds: float, should_stop: StopPlayback = None) -> bool:
+    """Wait for a frame/display duration, checking for changes once a second."""
+    end_time = monotonic() + seconds
+    while True:
+        if should_stop is not None and should_stop():
+            return True
+        remaining = end_time - monotonic()
+        if remaining <= 0:
+            return False
+        sleep(min(1.0, remaining) if should_stop is not None else remaining)
 
 
 def is_media_file(path: Path) -> bool:
@@ -32,16 +45,17 @@ def play_media_file(
     display_frame: DisplayFrame,
     matrix_size: tuple[int, int],
     play_seconds: float,
+    should_stop: StopPlayback = None,
 ) -> None:
     """Play a GIF or video file for the requested number of seconds."""
     suffix = media_path.suffix.lower()
 
     if suffix in GIF_EXTENSIONS:
-        play_gif(media_path, display_frame, matrix_size, play_seconds)
+        play_gif(media_path, display_frame, matrix_size, play_seconds, should_stop)
         return
 
     if suffix in VIDEO_EXTENSIONS:
-        play_video(media_path, display_frame, matrix_size, play_seconds)
+        play_video(media_path, display_frame, matrix_size, play_seconds, should_stop)
         return
 
     raise ValueError(f"Unsupported media file: {media_path}")
@@ -52,6 +66,7 @@ def play_gif(
     display_frame: DisplayFrame,
     matrix_size: tuple[int, int],
     play_seconds: float,
+    should_stop: StopPlayback = None,
 ) -> None:
     """Play an animated GIF for the requested number of seconds."""
     end_time = monotonic() + play_seconds
@@ -59,11 +74,17 @@ def play_gif(
     with Image.open(gif_path) as source:
         while monotonic() < end_time:
             for frame in ImageSequence.Iterator(source):
+                if should_stop is not None and should_stop():
+                    return
                 image = fit_frame(ImageOps.exif_transpose(frame), matrix_size)
                 display_frame(image)
 
                 duration_ms = frame.info.get("duration", 100)
-                sleep(min(duration_ms / 1000 * PLAYBACK_SLOWDOWN, max(0, end_time - monotonic())))
+                if wait_for_stop(
+                    min(duration_ms / 1000 * PLAYBACK_SLOWDOWN, max(0, end_time - monotonic())),
+                    should_stop,
+                ):
+                    return
 
                 if monotonic() >= end_time:
                     break
@@ -74,6 +95,7 @@ def play_video(
     display_frame: DisplayFrame,
     matrix_size: tuple[int, int],
     play_seconds: float,
+    should_stop: StopPlayback = None,
 ) -> None:
     """Play a video file for the requested number of seconds."""
     try:
@@ -94,6 +116,8 @@ def play_video(
 
     try:
         while monotonic() < end_time:
+            if should_stop is not None and should_stop():
+                return
             ok, frame = capture.read()
             if not ok:
                 capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
@@ -102,6 +126,9 @@ def play_video(
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             image = fit_frame(Image.fromarray(rgb_frame), matrix_size)
             display_frame(image)
-            sleep(min(frame_delay, max(0, end_time - monotonic())))
+            if wait_for_stop(
+                min(frame_delay, max(0, end_time - monotonic())), should_stop,
+            ):
+                return
     finally:
         capture.release()
