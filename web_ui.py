@@ -13,7 +13,10 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from werkzeug.exceptions import HTTPException
 from werkzeug.utils import secure_filename
 
-from led_settings import SETTINGS_FILENAME, read_brightness, validate_brightness, write_brightness
+from led_settings import (
+    SETTINGS_FILENAME, read_brightness, validate_brightness, write_brightness,
+    read_display_seconds, validate_display_seconds, write_display_seconds,
+)
 
 # These image extensions match LED_Code.py; videos remain managed separately.
 IMAGE_FORMATS = {
@@ -136,6 +139,26 @@ def create_app(input_folder=None, config=None) -> Flask:
             extensions=", ".join(sorted(IMAGE_FORMATS)),
             accept=",".join(sorted(IMAGE_FORMATS)),
         )
+
+    @app.get("/api/display-seconds")
+    def get_display_seconds():
+        return jsonify(display_seconds=read_display_seconds(folder / SETTINGS_FILENAME))
+
+    @app.post("/api/display-seconds")
+    def set_display_seconds():
+        payload = request.get_json(silent=True)
+        try:
+            value = validate_display_seconds(
+                payload.get("display_seconds") if isinstance(payload, dict) else None
+            )
+        except ValueError as exc:
+            abort(400, description=str(exc))
+        try:
+            with upload_lock:
+                write_display_seconds(folder / SETTINGS_FILENAME, value)
+        except OSError:
+            abort(503, description="Could not save display duration. Check Input folder permissions.")
+        return jsonify(display_seconds=value)
 
     @app.get("/api/brightness")
     def get_brightness():

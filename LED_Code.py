@@ -6,8 +6,8 @@ from rpi_ws281x import Color, PixelStrip
 
 from media_player import MEDIA_EXTENSIONS, is_media_file, play_media_file, wait_for_stop
 from led_settings import (
-    DEFAULT_BRIGHTNESS, SETTINGS_FILENAME,
-    BrightnessController, read_brightness,
+    DEFAULT_BRIGHTNESS, DEFAULT_DISPLAY_SECONDS, SETTINGS_FILENAME,
+    BrightnessController, read_brightness, read_display_seconds,
 )
 
 
@@ -27,7 +27,7 @@ LED_CHANNEL = 0
 INPUT_FOLDER = Path(__file__).resolve().parent / "Input"
 IMAGE_EXTENSIONS = {".bmp", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp"}
 SUPPORTED_EXTENSIONS = IMAGE_EXTENSIONS | MEDIA_EXTENSIONS
-DISPLAY_SECONDS = 600
+DISPLAY_SECONDS = DEFAULT_DISPLAY_SECONDS  # Used when no saved duration exists
 INPUT_POLL_SECONDS = 1.0
 
 
@@ -146,18 +146,19 @@ def main() -> None:
                 break
             print(f"Displaying {display_path.name} on the LED matrix")
             try:
+                display_seconds = read_display_seconds(settings_path, DISPLAY_SECONDS)
                 if is_media_file(display_path):
                     play_media_file(
                         display_path,
                         lambda image: display_image(strip, image),
                         (MATRIX_WIDTH, MATRIX_HEIGHT),
-                        DISPLAY_SECONDS,
+                        display_seconds,
                         should_stop=input_changed,
                     )
                 else:
                     image = load_image(display_path)
                     display_image(strip, image)
-                    wait_for_stop(DISPLAY_SECONDS, input_changed)
+                    wait_for_stop(display_seconds, input_changed)
             except (OSError, ValueError, RuntimeError) as exc:
                 # Uploads may be incomplete or disappear while being opened.
                 print(f"Skipping {display_path.name}: {exc}")

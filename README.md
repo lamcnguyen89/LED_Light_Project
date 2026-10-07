@@ -5,7 +5,9 @@ Code for getting an LED Light strip arranged in a 20x15 matrix to work on a Rasp
 The player checks the project's `Input` folder every second. Added or replaced
 images, GIFs, and videos interrupt the current display and play first. Removed
 files are dropped from the slideshow. Each unchanged file plays for 600 seconds
-(`DISPLAY_SECONDS` in `LED_Code.py`). An empty folder waits for new files while
+by default (`DISPLAY_SECONDS` in `LED_Code.py`). Adjust animation duration above
+brightness in the WebUI (1 to 86400 seconds). The saved duration persists across
+restarts and applies when the next image, GIF, or video starts. An empty folder waits for new files while
 keeping the last displayed frame on the LEDs.
 
 After copying updated Python code to your Raspberry Pi, restart the service once:

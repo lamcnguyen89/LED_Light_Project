@@ -53,3 +53,8 @@ dialog::backdrop { background: #000a; }
 .brightness-control input { flex: 1; min-width: 120px; accent-color: var(--accent); cursor: pointer; }
 .brightness-control output { min-width: 4ch; text-align: right; font-variant-numeric: tabular-nums; color: var(--accent); }
 #brightness-status { min-height: 1.5em; }
+
+.duration-control { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-top: 20px; }
+.duration-control label { font-size: 14px; }
+.duration-control input { width: 110px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--text); font: inherit; }
+#duration-status { min-height: 1.5em; }

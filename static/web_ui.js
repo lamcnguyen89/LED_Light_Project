@@ -227,3 +227,43 @@ async function loadBrightness() {
   }
 }
 loadBrightness();
+
+const durationForm = document.querySelector("#duration-form");
+const durationInput = document.querySelector("#display-seconds");
+const durationSave = document.querySelector("#duration-save");
+const durationStatus = document.querySelector("#duration-status");
+
+durationForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (durationSave.disabled || !durationForm.reportValidity()) return;
+  durationSave.disabled = true;
+  durationInput.disabled = true;
+  durationStatus.textContent = "Saving duration...";
+  try {
+    const result = await api("/api/display-seconds", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ display_seconds: Number(durationInput.value) })
+    });
+    durationInput.value = result.display_seconds;
+    durationStatus.textContent = "Duration saved. Applies to the next image or animation.";
+  } catch (error) {
+    durationStatus.textContent = error.message;
+  } finally {
+    durationSave.disabled = false;
+    durationInput.disabled = false;
+  }
+});
+
+async function loadDuration() {
+  try {
+    const result = await api("/api/display-seconds");
+    durationInput.value = result.display_seconds;
+    durationInput.disabled = false;
+    durationSave.disabled = false;
+    durationStatus.textContent = "1 to 86400 seconds per image or animation. Applies to the next item.";
+  } catch (error) {
+    durationStatus.textContent = error.message;
+  }
+}
+loadDuration();
