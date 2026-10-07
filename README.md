@@ -36,6 +36,8 @@ Install or update both startup services on the Pi:
 sudo bash systemd/install_ledart.sh
 ```
 
+The installer updates the WebUI storage policy even if earlier troubleshooting overrides remain on the Pi. It checks actual upload file operations inside the service before reporting success. Existing files in `Input` are preserved by the installer; keep a copy if replacing your checkout because `Input` is excluded from Git.
+
 Open `http://<pi-ip>:8080` from a browser on your local network. The Flask WebUI lets you preview images and animated GIFs, see first-frame 20×15 matrix previews, upload multiple files, and delete files with confirmation. Changes are picked up by the player automatically. Upload batches have a 32 MiB limit; duplicate filenames are renamed rather than overwritten. Existing videos stay in the slideshow but are not managed by this image/GIF UI.
 
 The separate `ledart-web` service uses Waitress and runs without root privileges. The WebUI has no login, so keep it on a trusted local network. See [systemd/README.md](systemd/README.md) for permissions, service commands, host/port configuration, and manual startup.

@@ -14,7 +14,8 @@ if [[ ! -d /run/systemd/system ]] || ! command -v apt-get >/dev/null; then
     exit 1
 fi
 for file in LED_Code.py web_ui.py requirements.txt templates/index.html \
-    static/web_ui.css static/web_ui.js systemd/ledart.service systemd/ledart-web.service; do
+    static/web_ui.css static/web_ui.js systemd/ledart.service systemd/ledart-web.service \
+    systemd/ledart-web-storage.conf; do
     if [[ ! -f "$PROJECT_ROOT/$file" ]]; then
         echo "Missing project file: $PROJECT_ROOT/$file" >&2
         exit 1
@@ -81,20 +82,32 @@ if ! runuser -u "$WEB_USER" -- test -x "$VENV_DIR/bin/python"; then
 fi
 
 UNIT_DIR="$(mktemp -d)"
-trap 'rm -f -- "$UNIT_DIR/ledart.service" "$UNIT_DIR/ledart-web.service"; rmdir -- "$UNIT_DIR"' EXIT
+trap 'rm -f -- "$UNIT_DIR/ledart.service" "$UNIT_DIR/ledart-web.service" "$UNIT_DIR/ledart-web.service.d/zzz-ledart-storage.conf"; rmdir -- "$UNIT_DIR/ledart-web.service.d" "$UNIT_DIR"' EXIT
+mkdir -p -- "$UNIT_DIR/ledart-web.service.d"
+install -m 0644 "$PROJECT_ROOT/systemd/ledart-web-storage.conf" "$UNIT_DIR/ledart-web.service.d/zzz-ledart-storage.conf"
 for unit in ledart.service ledart-web.service; do
     sed -e "s|@PROJECT_ROOT@|$PROJECT_ROOT|g" -e "s|@WEB_USER@|$WEB_USER|g" \
         "$PROJECT_ROOT/systemd/$unit" > "$UNIT_DIR/$unit"
 done
-systemd-analyze verify "$UNIT_DIR/ledart.service" "$UNIT_DIR/ledart-web.service"
+SYSTEMD_UNIT_PATH="$UNIT_DIR:" systemd-analyze verify "$UNIT_DIR/ledart.service" "$UNIT_DIR/ledart-web.service"
 for unit in ledart.service ledart-web.service; do
     install -m 0644 "$UNIT_DIR/$unit" "/etc/systemd/system/$unit"
 done
+# Retain user overrides (such as port settings), but supersede the old storage policy.
+install -d -m 0755 /etc/systemd/system/ledart-web.service.d
+install -m 0644 "$PROJECT_ROOT/systemd/ledart-web-storage.conf" \
+    /etc/systemd/system/ledart-web.service.d/zzz-ledart-storage.conf
 systemctl daemon-reload
 systemctl enable ledart.service ledart-web.service
-systemctl restart ledart.service ledart-web.service
+# ExecStartPre performs real upload file operations as WEB_USER inside the service sandbox.
+if ! systemctl restart ledart-web.service; then
+    echo "WebUI startup/storage check failed. Installation is not complete." >&2
+    journalctl --no-pager -u ledart-web.service -n 40
+    exit 1
+fi
+systemctl restart ledart.service
 systemctl --no-pager --full status ledart.service ledart-web.service
-printf '\nBoth services are enabled at boot.\n'
+printf '\nWebUI storage check passed. Both services are enabled at boot.\n'
 printf 'Player logs: sudo journalctl -u ledart -f\n'
 printf 'WebUI logs: sudo journalctl -u ledart-web -f\n'
 printf 'Open http://<pi-ip>:8080 from your browser (WebUI user: %s).\n' "$WEB_USER"

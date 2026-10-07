@@ -43,7 +43,13 @@ sudo LEDART_WEB_USER=pi bash systemd/install_ledart.sh
 
 Replace pi with your actual account name. The installer changes only the Input directory's ownership to this user and grants the owner read/write/traverse permission. It preserves ownership of existing files. The account needs read access to existing media, the project, and the virtual environment, plus traverse access through the parent directories. The installer checks access to the application files before installing either service.
 
-The WebUI service restricts filesystem writes to Input and its private temporary directory. The LED service retains root access independently.
+The WebUI uses ProtectSystem=full and ProtectHome=false: OS directories remain read-only, while Input under /home follows normal Unix permissions. The service still runs unprivileged with NoNewPrivileges, PrivateTmp, and PrivateDevices. This compatibility setting also allows writes to other locations the WebUI account owns; it does not restrict writes exclusively to Input. The LED service retains root access independently.
+
+Before every service start, web_ui.py --check-storage creates hidden scratch files in Input and checks writing, chmod, hard-link publication, and deletion inside the actual service sandbox. A failure stops startup with the directory and error in the journal. Manual web_ui.py startup performs the same check. Scratch files are removed and existing media is preserved.
+
+The installer installs /etc/systemd/system/ledart-web.service.d/zzz-ledart-storage.conf to supersede the earlier read-only storage policy and clear ReadWritePaths and BindPaths troubleshooting entries, including paths from an older checkout. Existing override files and host/port settings are preserved. Reinstalling from a fresh clone updates these service settings; recloning alone does not update /etc/systemd/system.
+
+If startup fails, run sudo journalctl --no-pager -u ledart-web -n 40. A genuinely read-only underlying filesystem or another later override must still be corrected.
 
 ## Change host or port
 
@@ -64,7 +70,7 @@ sudo systemctl daemon-reload
 sudo systemctl restart ledart-web
 ```
 
-Overrides survive rerunning the installer. A host of 127.0.0.1 restricts access to the Pi itself.
+Host/port overrides survive rerunning the installer. The installer manages storage restrictions separately as described above. A host of 127.0.0.1 restricts access to the Pi itself.
 
 ## Updating or moving the project
 

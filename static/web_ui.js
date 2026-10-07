@@ -160,3 +160,70 @@ refresh();
 setInterval(() => {
   if (!document.hidden && !dialog.open) refresh();
 }, 5000);
+
+const brightnessSlider = document.querySelector("#brightness");
+const brightnessValue = document.querySelector("#brightness-value");
+const brightnessStatus = document.querySelector("#brightness-status");
+let queuedBrightness = null;
+let sendingBrightness = false;
+let brightnessTimer = null;
+
+function showBrightness() {
+  brightnessValue.value = Math.round(Number(brightnessSlider.value) / 255 * 100) + "%";
+}
+
+async function sendBrightness() {
+  if (sendingBrightness || queuedBrightness === null) return;
+  sendingBrightness = true;
+  const value = queuedBrightness;
+  queuedBrightness = null;
+  try {
+    await api("/api/brightness", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brightness: value })
+    });
+    if (queuedBrightness === null) brightnessStatus.textContent = "Brightness saved";
+  } catch (error) {
+    brightnessStatus.textContent = error.message;
+  } finally {
+    sendingBrightness = false;
+    // Serialize requests and keep only the newest pending slider position.
+    if (queuedBrightness !== null) scheduleBrightness();
+  }
+}
+
+function scheduleBrightness() {
+  if (brightnessTimer !== null) return;
+  brightnessTimer = setTimeout(() => {
+    brightnessTimer = null;
+    sendBrightness();
+  }, 50);
+}
+
+brightnessSlider.addEventListener("input", () => {
+  showBrightness();
+  queuedBrightness = Number(brightnessSlider.value);
+  brightnessStatus.textContent = "Adjusting brightness…";
+  scheduleBrightness();
+});
+brightnessSlider.addEventListener("change", () => {
+  // Flush the final position immediately when the slider is released.
+  if (brightnessTimer !== null) clearTimeout(brightnessTimer);
+  brightnessTimer = null;
+  queuedBrightness = Number(brightnessSlider.value);
+  sendBrightness();
+});
+
+async function loadBrightness() {
+  try {
+    const result = await api("/api/brightness");
+    brightnessSlider.value = result.brightness;
+    showBrightness();
+    brightnessSlider.disabled = false;
+    brightnessStatus.textContent = "Drag to adjust the lights";
+  } catch (error) {
+    brightnessStatus.textContent = error.message;
+  }
+}
+loadBrightness();

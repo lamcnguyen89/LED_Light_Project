@@ -4,6 +4,8 @@ from typing import Callable
 
 from PIL import Image, ImageOps, ImageSequence
 
+from led_settings import BRIGHTNESS_POLL_SECONDS
+
 
 GIF_EXTENSIONS = {".gif"}
 VIDEO_EXTENSIONS = {".avi", ".m4v", ".mkv", ".mov", ".mp4", ".webm"}
@@ -15,7 +17,7 @@ StopPlayback = Callable[[], bool]
 
 
 def wait_for_stop(seconds: float, should_stop: StopPlayback = None) -> bool:
-    """Wait for a frame/display duration, checking for changes once a second."""
+    """Wait for a frame/display duration, polling for live controls and changes."""
     end_time = monotonic() + seconds
     while True:
         if should_stop is not None and should_stop():
@@ -23,7 +25,7 @@ def wait_for_stop(seconds: float, should_stop: StopPlayback = None) -> bool:
         remaining = end_time - monotonic()
         if remaining <= 0:
             return False
-        sleep(min(1.0, remaining) if should_stop is not None else remaining)
+        sleep(min(BRIGHTNESS_POLL_SECONDS, remaining) if should_stop is not None else remaining)
 
 
 def is_media_file(path: Path) -> bool:

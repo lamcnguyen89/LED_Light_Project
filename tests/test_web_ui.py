@@ -1,4 +1,5 @@
 """Run: python -B -m unittest discover -s tests -v"""
+import errno
 from io import BytesIO
 from pathlib import Path
 import tempfile
@@ -8,7 +9,7 @@ from urllib.parse import quote
 
 from PIL import Image
 
-from web_ui import create_app
+from web_ui import check_upload_storage, create_app
 
 
 def image_bytes(format="PNG", animated=False):
@@ -42,6 +43,26 @@ class WebUITests(unittest.TestCase):
             "/api/upload", headers=self.headers,
             data={"files": (contents or image_bytes(), name)},
         )
+
+    def test_storage_check_preserves_media_and_cleans_scratch_files(self):
+        media = self.folder / "existing.gif"
+        contents = image_bytes("GIF", animated=True).getvalue()
+        media.write_bytes(contents)
+        check_upload_storage(self.folder)
+        self.assertEqual(media.read_bytes(), contents)
+        self.assertEqual(list(self.folder.iterdir()), [media])
+
+    def test_storage_check_reports_read_only_filesystem(self):
+        with patch("web_ui.tempfile.TemporaryDirectory", side_effect=OSError(errno.EROFS, "Read-only file system")):
+            with self.assertRaisesRegex(RuntimeError, "Upload storage check failed.*install_ledart"):
+                check_upload_storage(self.folder)
+        self.assertEqual(list(self.folder.iterdir()), [])
+
+    def test_storage_check_cleans_up_after_hard_link_failure(self):
+        with patch("web_ui.os.link", side_effect=PermissionError(errno.EACCES, "Permission denied")):
+            with self.assertRaisesRegex(RuntimeError, "Upload storage check failed"):
+                check_upload_storage(self.folder)
+        self.assertEqual(list(self.folder.iterdir()), [])
 
     def test_page_assets_and_empty_gallery(self):
         response = self.client.get("/")

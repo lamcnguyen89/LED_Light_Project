@@ -5,6 +5,10 @@ from PIL import Image, ImageOps
 from rpi_ws281x import Color, PixelStrip
 
 from media_player import MEDIA_EXTENSIONS, is_media_file, play_media_file, wait_for_stop
+from led_settings import (
+    DEFAULT_BRIGHTNESS, SETTINGS_FILENAME,
+    BrightnessController, read_brightness,
+)
 
 
 # LED matrix configuration
@@ -16,7 +20,7 @@ LED_COUNT = MATRIX_WIDTH * MATRIX_HEIGHT
 LED_PIN = 18             # GPIO18
 LED_FREQ_HZ = 800000     # WS2812 signal frequency
 LED_DMA = 10             # DMA channel
-LED_BRIGHTNESS = 255     # 0-255
+LED_BRIGHTNESS = DEFAULT_BRIGHTNESS  # 0-255; used when no saved setting exists
 LED_INVERT = False
 LED_CHANNEL = 0
 
@@ -90,26 +94,31 @@ def display_image(strip: PixelStrip, image: Image.Image) -> None:
     strip.show()
 
 def main() -> None:
+    INPUT_FOLDER.mkdir(parents=True, exist_ok=True)
+    settings_path = INPUT_FOLDER / SETTINGS_FILENAME
+    initial_brightness = read_brightness(settings_path, LED_BRIGHTNESS)
     strip = PixelStrip(
         LED_COUNT,
         LED_PIN,
         LED_FREQ_HZ,
         LED_DMA,
         LED_INVERT,
-        LED_BRIGHTNESS,
+        initial_brightness,
         LED_CHANNEL,
     )
     
-    INPUT_FOLDER.mkdir(parents=True, exist_ok=True)
     strip.begin()
+    brightness = BrightnessController(strip, settings_path, initial_brightness)
 
     print(f"Watching {INPUT_FOLDER}. Press Ctrl+C to stop.")
     previous_snapshot = {}
     while True:
+        brightness.update()
         snapshot = scan_display_files(INPUT_FOLDER)
         if not snapshot:
             previous_snapshot = snapshot
-            sleep(INPUT_POLL_SECONDS)
+            # Keep brightness responsive without scanning an empty library 20 times/second.
+            wait_for_stop(INPUT_POLL_SECONDS, lambda: brightness.update() or False)
             continue
 
         # Show newly added or replaced files first, then resume the slideshow.
@@ -125,6 +134,7 @@ def main() -> None:
 
         def input_changed() -> bool:
             nonlocal next_scan
+            brightness.update()
             now = monotonic()
             if now < next_scan:
                 return False
@@ -151,7 +161,7 @@ def main() -> None:
             except (OSError, ValueError, RuntimeError) as exc:
                 # Uploads may be incomplete or disappear while being opened.
                 print(f"Skipping {display_path.name}: {exc}")
-                sleep(INPUT_POLL_SECONDS)
+                wait_for_stop(INPUT_POLL_SECONDS, lambda: brightness.update() or False)
             # Check directly so a cached poll cannot hide a detected change.
             if scan_display_files(INPUT_FOLDER) != snapshot:
                 break

@@ -13,6 +13,8 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from werkzeug.exceptions import HTTPException
 from werkzeug.utils import secure_filename
 
+from led_settings import SETTINGS_FILENAME, read_brightness, validate_brightness, write_brightness
+
 # These image extensions match LED_Code.py; videos remain managed separately.
 IMAGE_FORMATS = {
     ".bmp": "BMP", ".jpeg": "JPEG", ".jpg": "JPEG", ".png": "PNG",
@@ -52,6 +54,27 @@ def inspect_image(path: Path, validate: bool = False) -> dict:
     return details
 
 
+def check_upload_storage(folder: Path) -> None:
+    """Exercise upload writes, permissions, hard links, and deletion before serving."""
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+        # Hidden scratch files cannot enter the LED player's media library.
+        with tempfile.TemporaryDirectory(dir=folder, prefix=".storage-check-") as scratch:
+            source = Path(scratch) / "upload.tmp"
+            source.write_bytes(b"LED media storage check")
+            os.chmod(source, 0o644)
+            published = Path(scratch) / "published.tmp"
+            os.link(source, published)
+            source.unlink()
+            published.unlink()
+    except OSError as exc:
+        raise RuntimeError(
+            f"Upload storage check failed for {folder}: {exc}. "
+            "Run sudo bash systemd/install_ledart.sh to update the service and Input permissions. "
+            "If it still fails, inspect sudo systemctl cat ledart-web and the filesystem mount."
+        ) from exc
+
+
 def create_app(input_folder=None, config=None) -> Flask:
     app = Flask(__name__)
     app.config.update(
@@ -84,7 +107,7 @@ def create_app(input_folder=None, config=None) -> Flask:
             token = request.headers.get("X-CSRF-Token", "")
             expected = session.get("csrf_token", "")
             if not expected or not secrets.compare_digest(token, expected):
-                abort(403, description="Refresh the page before uploading or deleting files.")
+                abort(403, description="Refresh the page before making changes.")
 
     @app.after_request
     def response_headers(response):
@@ -113,6 +136,26 @@ def create_app(input_folder=None, config=None) -> Flask:
             extensions=", ".join(sorted(IMAGE_FORMATS)),
             accept=",".join(sorted(IMAGE_FORMATS)),
         )
+
+    @app.get("/api/brightness")
+    def get_brightness():
+        return jsonify(brightness=read_brightness(folder / SETTINGS_FILENAME))
+
+    @app.post("/api/brightness")
+    def set_brightness():
+        payload = request.get_json(silent=True)
+        try:
+            value = validate_brightness(
+                payload.get("brightness") if isinstance(payload, dict) else None
+            )
+        except ValueError as exc:
+            abort(400, description=str(exc))
+        try:
+            with upload_lock:
+                write_brightness(folder / SETTINGS_FILENAME, value)
+        except OSError:
+            abort(503, description="Could not save brightness. Check Input folder permissions.")
+        return jsonify(brightness=value)
 
     @app.get("/api/files")
     def list_files():
@@ -220,13 +263,26 @@ def create_app(input_folder=None, config=None) -> Flask:
 
 
 def main():
-    from waitress import serve
-
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", default=os.environ.get("LEDART_WEB_HOST", "0.0.0.0"))
     parser.add_argument("--port", type=int, default=int(os.environ.get("LEDART_WEB_PORT", "8080")))
+    parser.add_argument(
+        "--check-storage", action="store_true",
+        help="Verify upload storage access and exit without starting the web server.",
+    )
     args = parser.parse_args()
-    app = create_app()
+    folder = Path(__file__).resolve().parent / "Input"
+    try:
+        check_upload_storage(folder)
+    except RuntimeError as exc:
+        parser.exit(1, f"{exc}\n")
+    if args.check_storage:
+        print(f"Upload storage check passed: {folder}", flush=True)
+        return
+
+    from waitress import serve
+
+    app = create_app(folder)
     print(f"LED media manager listening on {args.host}:{args.port}", flush=True)
     serve(
         app, host=args.host, port=args.port, threads=2,
