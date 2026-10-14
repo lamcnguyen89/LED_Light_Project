@@ -27,7 +27,10 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(245px, 1fr)); gap: 20px; }
 .card { border: 1px solid var(--line); background: var(--panel); border-radius: 12px; overflow: hidden; }
 .preview { height: 210px; background: #080d0a; display: flex; align-items: center; justify-content: center; }
-.preview img { max-height: 100%; max-width: 100%; object-fit: contain; }
+.preview img, .preview video { max-height: 100%; max-width: 100%; object-fit: contain; }
+.card-actions { display: flex; flex-direction: column; gap: 8px; }
+.pause-button { padding: 7px 12px; font-size: 13px; }
+.playback-status { color: var(--accent); font-size: 12px; margin-bottom: 12px; }
 .card-body { padding: 18px; }
 .filename { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; margin: 0; }
 .file-meta { color: var(--muted); font-size: 12px; margin: 6px 0 16px; }

@@ -54,7 +54,8 @@ function renderFiles(files) {
     if (file.error) {
       preview.append(element("p", "preview-error", "Preview unavailable"));
     } else {
-      const image = element("img");
+      const image = element(file.video ? "video" : "img");
+      if (file.video) { image.controls = true; image.preload = "metadata"; }
       image.src = previewUrl;
       image.alt = file.name;
       image.loading = "lazy";
@@ -65,12 +66,13 @@ function renderFiles(files) {
     }
     const body = element("div", "card-body");
     body.append(element("h3", "filename", file.name));
-    const dimensions = file.error ? "Unreadable image" : file.width + " × " + file.height +
+    const dimensions = file.video ? "Video" : file.error ? "Unreadable image" : file.width + " × " + file.height +
       (file.frames > 1 ? " · " + file.frames + " frames" : "");
     body.append(element("p", "file-meta", dimensions + " · " + fileSize(file.size)));
+    body.append(element("p", "playback-status", file.paused ? "Paused on LED panel" : "Active on LED panel"));
     const bottom = element("div", "card-bottom");
     const matrixGroup = element("div");
-    if (!file.error) {
+    if (!file.error && !file.video) {
       const matrix = element("img", "matrix");
       matrix.src = previewUrl + "&matrix=1";
       matrix.alt = "20 by 15 matrix preview of " + file.name;
@@ -87,7 +89,30 @@ function renderFiles(files) {
       dialog.showModal();
       document.querySelector("#cancel-delete").focus();
     });
-    bottom.append(matrixGroup, button);
+    const pause = element("button", "secondary pause-button", file.paused ? "Unpause" : "Pause");
+    pause.type = "button";
+    pause.setAttribute("aria-label", (file.paused ? "Unpause " : "Pause ") + file.name);
+    pause.addEventListener("click", async () => {
+      if (mutating) return;
+      mutating = true;
+      pause.disabled = true;
+      try {
+        await api("/api/files/" + encodeURIComponent(file.name) + "/pause", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paused: !file.paused })
+        });
+        showMessage((file.paused ? "Unpaused " : "Paused ") + file.name + " on the LED panel.");
+      } catch (error) {
+        showMessage(error.message, true);
+      } finally {
+        mutating = false;
+        pause.disabled = false;
+        await refresh(true);
+      }
+    });
+    const actions = element("div", "card-actions");
+    actions.append(pause, button);
+    bottom.append(matrixGroup, actions);
     body.append(bottom);
     card.append(preview, body);
     gallery.append(card);

@@ -49,6 +49,26 @@ def write_brightness(path, value):
     write_setting(path, "brightness", validate_brightness(value))
 
 
+def read_paused_files(path):
+    """Return media names excluded from playback without removing their files."""
+    try:
+        names = json.loads(Path(path).read_text(encoding="utf-8"))["paused_files"]
+        if isinstance(names, list):
+            return {name for name in names if isinstance(name, str)}
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    return set()
+
+
+def write_media_paused(path, name, paused):
+    names = read_paused_files(path)
+    if paused:
+        names.add(name)
+    else:
+        names.discard(name)
+    write_setting(path, "paused_files", sorted(names))
+
+
 def write_setting(path, key, value):
     """Atomically update one setting while preserving the other controls."""
     path = Path(path)

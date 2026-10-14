@@ -7,7 +7,7 @@ from rpi_ws281x import Color, PixelStrip
 from media_player import MEDIA_EXTENSIONS, is_media_file, play_media_file, wait_for_stop
 from led_settings import (
     DEFAULT_BRIGHTNESS, DEFAULT_DISPLAY_SECONDS, SETTINGS_FILENAME,
-    BrightnessController, read_brightness, read_display_seconds,
+    BrightnessController, read_brightness, read_display_seconds, read_paused_files,
 )
 
 
@@ -36,11 +36,13 @@ def find_display_files(folder: Path) -> list[Path]:
     if not folder.is_dir():
         raise FileNotFoundError(f"Input folder does not exist: {folder}")
 
+    paused = read_paused_files(folder / SETTINGS_FILENAME)
     display_files = sorted(
         (
             path
             for path in folder.iterdir()
-            if path.is_file() and path.suffix.lower() in SUPPORTED_EXTENSIONS
+            if path.is_file() and not path.is_symlink() and not path.name.startswith(".")
+            and path.name not in paused and path.suffix.lower() in SUPPORTED_EXTENSIONS
         ),
         key=lambda path: path.name.lower(),
     )
@@ -116,6 +118,7 @@ def main() -> None:
         brightness.update()
         snapshot = scan_display_files(INPUT_FOLDER)
         if not snapshot:
+            display_image(strip, Image.new("RGB", (MATRIX_WIDTH, MATRIX_HEIGHT)))
             previous_snapshot = snapshot
             # Keep brightness responsive without scanning an empty library 20 times/second.
             wait_for_stop(INPUT_POLL_SECONDS, lambda: brightness.update() or False)

@@ -10,6 +10,7 @@ from urllib.parse import quote
 from PIL import Image
 
 from web_ui import check_upload_storage, create_app
+from led_settings import SETTINGS_FILENAME, read_paused_files, read_brightness, write_brightness
 
 
 def image_bytes(format="PNG", animated=False):
@@ -184,8 +185,9 @@ class WebUITests(unittest.TestCase):
         (self.folder / "broken.png").write_bytes(b"broken")
         (self.folder / "movie.mp4").write_bytes(b"existing video")
         items = self.client.get("/api/files").json["files"]
-        self.assertEqual([item["name"] for item in items], ["broken.png"])
+        self.assertEqual([item["name"] for item in items], ["broken.png", "movie.mp4"])
         self.assertIn("error", items[0])
+        self.assertTrue(items[1]["video"])
         self.assertEqual(self.client.get("/preview/broken.png").status_code, 415)
         self.assertEqual(self.client.delete("/api/files/broken.png", headers=self.headers).status_code, 200)
         self.assertTrue((self.folder / "movie.mp4").exists())
@@ -193,6 +195,44 @@ class WebUITests(unittest.TestCase):
     def test_delete_missing_file_and_empty_upload(self):
         self.assertEqual(self.client.delete("/api/files/missing.png", headers=self.headers).status_code, 404)
         self.assertEqual(self.client.post("/api/upload", headers=self.headers).status_code, 400)
+
+    def test_pause_preserves_media_preview_and_persists_until_unpaused(self):
+        for name, contents in (("test.png", image_bytes()),
+                               ("animated.gif", image_bytes("GIF", True))):
+            self.upload(name, contents)
+            original = (self.folder / name).read_bytes()
+            url = "/api/files/" + name + "/pause"
+            self.assertEqual(self.client.post(url, json={"paused": True}, headers=self.headers).status_code, 200)
+            self.assertEqual((self.folder / name).read_bytes(), original)
+            response = self.client.get("/preview/" + name)
+            self.assertEqual(response.status_code, 200)
+            response.close()
+            other = create_app(self.folder, {"TESTING": True}).test_client()
+            item = next(item for item in other.get("/api/files").json["files"] if item["name"] == name)
+            self.assertTrue(item["paused"])
+            write_brightness(self.folder / SETTINGS_FILENAME, 90)
+            self.assertIn(name, read_paused_files(self.folder / SETTINGS_FILENAME))
+            self.assertEqual(self.client.post(url, json={"paused": False}, headers=self.headers).status_code, 200)
+            self.assertNotIn(name, read_paused_files(self.folder / SETTINGS_FILENAME))
+            self.assertEqual(read_brightness(self.folder / SETTINGS_FILENAME), 90)
+
+    def test_pause_validation_csrf_and_storage_errors(self):
+        self.upload()
+        url = "/api/files/test.png/pause"
+        self.assertEqual(self.client.post(url, json={"paused": True}).status_code, 403)
+        for value in (None, 1, "true", [], {}):
+            self.assertEqual(self.client.post(url, json={"paused": value}, headers=self.headers).status_code, 400)
+        self.assertEqual(self.client.post("/api/files/missing.png/pause", json={"paused": True}, headers=self.headers).status_code, 404)
+        with patch("web_ui.write_media_paused", side_effect=PermissionError):
+            self.assertEqual(self.client.post(url, json={"paused": True}, headers=self.headers).status_code, 503)
+
+    def test_paused_video_can_be_unpaused_and_delete_clears_pause(self):
+        (self.folder / "movie.mp4").write_bytes(b"existing video")
+        url = "/api/files/movie.mp4/pause"
+        self.assertEqual(self.client.post(url, json={"paused": True}, headers=self.headers).status_code, 200)
+        self.assertTrue(self.client.get("/api/files").json["files"][0]["paused"])
+        self.assertEqual(self.client.delete("/api/files/movie.mp4", headers=self.headers).status_code, 200)
+        self.assertEqual(read_paused_files(self.folder / SETTINGS_FILENAME), set())
 
 
 if __name__ == "__main__":

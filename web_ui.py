@@ -12,10 +12,12 @@ from flask import Flask, abort, jsonify, render_template, request, send_file, se
 from PIL import Image, ImageOps, UnidentifiedImageError
 from werkzeug.exceptions import HTTPException
 from werkzeug.utils import secure_filename
+from media_player import VIDEO_EXTENSIONS
 
 from led_settings import (
     SETTINGS_FILENAME, read_brightness, validate_brightness, write_brightness,
     read_display_seconds, validate_display_seconds, write_display_seconds,
+    read_paused_files, write_media_paused,
 )
 
 # These image extensions match LED_Code.py; videos remain managed separately.
@@ -96,7 +98,8 @@ def create_app(input_folder=None, config=None) -> Flask:
     def media_path(name):
         if (
             not name or name.startswith(".") or "/" in name or "\\" in name
-            or Path(name).name != name or Path(name).suffix.lower() not in IMAGE_FORMATS
+            or Path(name).name != name
+            or Path(name).suffix.lower() not in set(IMAGE_FORMATS) | VIDEO_EXTENSIONS
         ):
             abort(404)
         path = folder / name
@@ -183,14 +186,19 @@ def create_app(input_folder=None, config=None) -> Flask:
     @app.get("/api/files")
     def list_files():
         items = []
+        paused = read_paused_files(folder / SETTINGS_FILENAME)
         for path in sorted(folder.iterdir(), key=lambda p: p.name.lower()):
-            if path.name.startswith(".") or path.suffix.lower() not in IMAGE_FORMATS or path.is_symlink():
+            if path.name.startswith(".") or path.suffix.lower() not in set(IMAGE_FORMATS) | VIDEO_EXTENSIONS or path.is_symlink():
                 continue
             try:
                 if not path.is_file():
                     continue
                 stat = path.stat()
-                item = dict(name=path.name, size=stat.st_size, modified=stat.st_mtime_ns)
+                item = dict(name=path.name, size=stat.st_size, modified=stat.st_mtime_ns,
+                            paused=path.name in paused, video=path.suffix.lower() in VIDEO_EXTENSIONS)
+                if item["video"]:
+                    items.append(item)
+                    continue
                 try:
                     item.update(inspect_image(path))
                 except (OSError, ValueError, UnidentifiedImageError,
@@ -204,6 +212,8 @@ def create_app(input_folder=None, config=None) -> Flask:
     @app.get("/preview/<name>")
     def preview(name):
         path = media_path(name)
+        if path.suffix.lower() in VIDEO_EXTENSIONS:
+            return send_file(path, conditional=True, max_age=0)
         try:
             details = inspect_image(path)
             matrix = request.args.get("matrix") == "1"
@@ -271,11 +281,26 @@ def create_app(input_folder=None, config=None) -> Flask:
                     temporary.unlink(missing_ok=True)
         return jsonify(saved=saved, errors=errors), (201 if saved else 400)
 
+    @app.post("/api/files/<name>/pause")
+    def pause(name):
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict) or type(payload.get("paused")) is not bool:
+            abort(400, description="Paused must be true or false.")
+        try:
+            with upload_lock:
+                media_path(name)
+                write_media_paused(folder / SETTINGS_FILENAME, name, payload["paused"])
+        except OSError:
+            abort(503, description="Could not save pause state. Check Input folder permissions.")
+        return jsonify(name=name, paused=payload["paused"])
+
     @app.delete("/api/files/<name>")
     def delete(name):
         path = media_path(name)
         try:
-            path.unlink()
+            with upload_lock:
+                write_media_paused(folder / SETTINGS_FILENAME, name, False)
+                path.unlink()
         except FileNotFoundError:
             abort(404)
         except OSError:
