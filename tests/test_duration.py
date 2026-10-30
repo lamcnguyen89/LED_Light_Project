@@ -17,7 +17,7 @@ class DurationTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.folder = Path(self.temporary.name)
         self.path = self.folder / SETTINGS_FILENAME
-        self.client = create_app(self.folder, {"TESTING": True}).test_client()
+        self.client = create_app(self.folder, {"TESTING": True, "WEB_PASSWORD": ""}).test_client()
         self.client.get("/")
         with self.client.session_transaction() as session:
             self.headers = {"X-CSRF-Token": session["csrf_token"]}
@@ -37,7 +37,7 @@ class DurationTests(unittest.TestCase):
             self.assertEqual(read_brightness(self.path), 90)
         self.client.post("/api/brightness", json={"brightness": 40}, headers=self.headers)
         self.assertEqual(read_display_seconds(self.path), 86400)
-        other = create_app(self.folder, {"TESTING": True}).test_client()
+        other = create_app(self.folder, {"TESTING": True, "WEB_PASSWORD": ""}).test_client()
         self.assertEqual(other.get("/api/display-seconds").json["display_seconds"], 86400)
         self.assertEqual(self.client.get("/api/files").json["files"], [])
 

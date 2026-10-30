@@ -13,6 +13,13 @@
     <header>
       <div class="eyebrow"><span class="indicator"></span> 20 × 15 LED MATRIX</div>
 
+      {% if password_enabled %}
+      <form id="logout-form" method="post" action="{{ url_for('logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="secondary" type="submit">Lock</button>
+      </form>
+      {% endif %}
+
       <h1>Midnight Machines: LED Matrix</h1>
       <p class="intro">Add images and GIFs to your matrix, or make room for something new.</p>
       <form id="duration-form" class="duration-control">

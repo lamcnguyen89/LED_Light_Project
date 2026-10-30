@@ -40,7 +40,7 @@ class EntryPointTests(unittest.TestCase):
         self.assertEqual(PROJECT_ROOT, Path(__file__).resolve().parents[1])
         self.assertEqual(INPUT_FOLDER, PROJECT_ROOT / "Input")
         with tempfile.TemporaryDirectory() as directory:
-            app = create_app(directory, {"TESTING": True})
+            app = create_app(directory, {"TESTING": True, "WEB_PASSWORD": ""})
             self.assertEqual(Path(app.root_path), PROJECT_ROOT / "web_server")
             client = app.test_client()
             self.assertEqual(client.get("/").status_code, 200)

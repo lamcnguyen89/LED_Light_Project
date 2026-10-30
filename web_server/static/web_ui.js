@@ -22,6 +22,10 @@ async function api(url, options = {}) {
   const response = await fetch(url, {
     ...options, headers: { "X-CSRF-Token": csrfToken, ...options.headers }
   });
+  if (response.status === 401) {
+    window.location.assign("/");
+    throw new Error("Your session has ended. Enter the password again.");
+  }
   let result;
   try { result = await response.json(); }
   catch { throw new Error("The server did not return a valid response. Try refreshing."); }

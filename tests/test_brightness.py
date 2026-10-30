@@ -18,7 +18,7 @@ class BrightnessTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.folder = Path(self.temporary.name)
         self.path = self.folder / SETTINGS_FILENAME
-        self.app = create_app(self.folder, {"TESTING": True, "SECRET_KEY": "test"})
+        self.app = create_app(self.folder, {"TESTING": True, "WEB_PASSWORD": "", "SECRET_KEY": "test"})
         self.client = self.app.test_client()
         self.client.get("/")
         with self.client.session_transaction() as session:
@@ -32,7 +32,7 @@ class BrightnessTests(unittest.TestCase):
         for value in (0, 128, 255):
             self.assertEqual(self.save(value).json, {"brightness": value})
             self.assertEqual(read_brightness(self.path), value)
-        other = create_app(self.folder, {"TESTING": True}).test_client()
+        other = create_app(self.folder, {"TESTING": True, "WEB_PASSWORD": ""}).test_client()
         self.assertEqual(other.get("/api/brightness").json["brightness"], 255)
         self.assertEqual(self.client.get("/api/files").json["files"], [])
         self.assertEqual(list(self.folder.iterdir()), [self.path])

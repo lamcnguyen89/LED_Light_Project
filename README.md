@@ -100,4 +100,20 @@ on the same local network using a device that supports mDNS. Change the alias in
 without renaming the Pi. Leave the alias blank to disable it. Existing `.env`
 files are preserved; add `LEDART_WEB_ALIAS=ledmatrix` yourself if needed.
 
-The separate `ledart-web` service uses Waitress and runs without root privileges. The WebUI has no login, so keep it on a trusted local network. See [systemd/README.md](systemd/README.md) for permissions, service commands, host/port configuration, and manual startup.
+The separate `ledart-web` service uses Waitress and runs without root privileges.
+For a password-only popup, set a password in the project-root `.env`:
+
+```dotenv
+LEDART_WEB_PASSWORD="your chosen password"
+```
+
+Restart with `sudo systemctl restart ledart-web`, or restart the foreground
+launcher. Enter only your password; the app uses the admin account implicitly.
+The library, previews, and control APIs require an authenticated session; CSRF
+checks still apply to changes. Use **Lock** to end the session. Sessions expire
+after 12 hours or when the web server restarts. A missing or blank password
+disables sign-in. Password changes take effect after restarting the web server.
+
+HTTP sends the password and session cookie without encryption, so
+keep this on a trusted local network. See [systemd/README.md](systemd/README.md)
+for permissions, service commands, configuration, and manual startup.

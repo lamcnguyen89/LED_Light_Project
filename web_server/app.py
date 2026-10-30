@@ -1,5 +1,7 @@
 """LAN media manager for the LED matrix. Start with: python main.py --service web."""
 import argparse
+from datetime import timedelta
+import hmac
 from io import BytesIO
 import os
 from pathlib import Path
@@ -8,7 +10,7 @@ import tempfile
 from threading import Lock
 import warnings
 
-from flask import Flask, abort, jsonify, render_template, request, send_file, session
+from flask import Flask, abort, jsonify, redirect, render_template, request, send_file, session, url_for
 from PIL import Image, ImageOps, UnidentifiedImageError
 from werkzeug.exceptions import HTTPException
 from werkzeug.utils import secure_filename
@@ -85,9 +87,11 @@ def create_app(input_folder=None, config=None) -> Flask:
     app = Flask(__name__)
     app.config.update(
         SECRET_KEY=secrets.token_hex(32),
+        WEB_PASSWORD=read_environment().get("LEDART_WEB_PASSWORD", ""),
         MAX_CONTENT_LENGTH=32 * 1024 * 1024,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Strict",
+        PERMANENT_SESSION_LIFETIME=timedelta(hours=12),
     )
     if config:
         app.config.update(config)
@@ -108,10 +112,39 @@ def create_app(input_folder=None, config=None) -> Flask:
             abort(404)
         return path
 
+    def authentication_marker():
+        # Bind the session to the current password without storing the password
+        # or an unkeyed password hash in the browser's signed session cookie.
+        key = app.secret_key
+        if isinstance(key, str):
+            key = key.encode("utf-8")
+        return hmac.new(key, app.config["WEB_PASSWORD"].encode("utf-8"), "sha256").hexdigest()
+
+    def authenticated():
+        return session.get("user") == "admin" and secrets.compare_digest(
+            session.get("auth_token", ""), authentication_marker(),
+        )
+
+    def login_page(error=None):
+        session.setdefault("csrf_token", secrets.token_hex(32))
+        return render_template("login.html", csrf_token=session["csrf_token"], error=error)
+
+    @app.before_request
+    def require_password():
+        if not app.config["WEB_PASSWORD"] or authenticated():
+            return
+        # The locked index serves only the password dialog. Static assets contain
+        # no private data and supply the dialog's stylesheet and script.
+        if request.endpoint in {"index", "login", "static"}:
+            return
+        return jsonify(error="Enter the password to unlock the LED media manager."), 401
+
     @app.before_request
     def protect_changes():
         if request.method in {"POST", "DELETE", "PUT", "PATCH"}:
             token = request.headers.get("X-CSRF-Token", "")
+            if not token and request.endpoint in {"login", "logout"}:
+                token = request.form.get("csrf_token", "")
             expected = session.get("csrf_token", "")
             if not expected or not secrets.compare_digest(token, expected):
                 abort(403, description="Refresh the page before making changes.")
@@ -122,9 +155,10 @@ def create_app(input_folder=None, config=None) -> Flask:
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; img-src 'self'; script-src 'self'; "
-            "style-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'"
+            "style-src 'self'; object-src 'none'; frame-ancestors 'none'; "
+            "base-uri 'self'; form-action 'self'"
         )
-        if request.path == "/" or request.path.startswith("/api/"):
+        if app.config["WEB_PASSWORD"] or request.path == "/" or request.path.startswith("/api/"):
             response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -137,12 +171,33 @@ def create_app(input_folder=None, config=None) -> Flask:
 
     @app.get("/")
     def index():
+        if app.config["WEB_PASSWORD"] and not authenticated():
+            return login_page()
         session.setdefault("csrf_token", secrets.token_hex(32))
         return render_template(
             "index.html", csrf_token=session["csrf_token"],
             extensions=", ".join(sorted(IMAGE_FORMATS)),
             accept=",".join(sorted(IMAGE_FORMATS)),
+            password_enabled=bool(app.config["WEB_PASSWORD"]),
         )
+
+    @app.post("/login")
+    def login():
+        if not app.config["WEB_PASSWORD"]:
+            return redirect(url_for("index"), code=303)
+        password = request.form.get("password", "")
+        if not secrets.compare_digest(password.encode("utf-8"), app.config["WEB_PASSWORD"].encode("utf-8")):
+            return login_page("Incorrect password. Please try again."), 401
+        session.clear()
+        session["user"] = "admin"
+        session["auth_token"] = authentication_marker()
+        session["csrf_token"] = secrets.token_hex(32)
+        return redirect(url_for("index"), code=303)
+
+    @app.post("/logout")
+    def logout():
+        session.clear()
+        return redirect(url_for("index"), code=303)
 
     @app.get("/api/display-seconds")
     def get_display_seconds():

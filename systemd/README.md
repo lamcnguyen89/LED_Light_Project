@@ -37,7 +37,10 @@ the .env configuration below to customize it.
 
 Supported uploads: .bmp, .jpeg, .jpg, .png, .tif, .tiff, .webp, .gif. Each upload batch is limited to 32 MiB. Images are limited to 16 million pixels; animations to 500 frames and 100 million total frame pixels. Unsupported or corrupt uploads are rejected. Duplicate filenames receive a numbered suffix. Uploads are fully validated in temporary files before being published atomically into Input. Original media is preserved; browser previews of still images are converted to PNG. Animated WebP and multi-page TIFF play as stills in the LED player. Existing videos remain in the slideshow and are not managed by this UI.
 
-This WebUI has no login and is intended for a trusted local network: anyone who can reach port 8080 can manage the images. Keep that port private.
+The WebUI supports an optional password-only popup configured with
+LEDART_WEB_PASSWORD in .env (the admin account is implicit). Without a password, anyone who can
+reach the web port can manage the images. HTTP does not encrypt credentials, so
+this remains intended for a trusted local network. Keep the web port private.
 
 ## Service commands
 
@@ -69,7 +72,7 @@ The installer installs /etc/systemd/system/ledart-web.service.d/zzz-ledart-stora
 
 If startup fails, run sudo journalctl --no-pager -u ledart-web -n 40. A genuinely read-only underlying filesystem or another later override must still be corrected.
 
-## Configure the alias, host, or port in .env
+## Configure the alias, host, port, or password in .env
 
 Both web_server/app.py and web_server/network_alias.py read .env from the project root, including
 when started manually from a different working directory. The installer creates
@@ -80,7 +83,25 @@ never overwritten. For example:
 LEDART_WEB_ALIAS=ledmatrix
 LEDART_WEB_HOST=0.0.0.0
 LEDART_WEB_PORT=8080
+LEDART_WEB_PASSWORD="your chosen password"
 ```
+
+LEDART_WEB_PASSWORD enables a password-only dialog for the media library and
+control APIs. Enter the password from .env; the admin account is implicit.
+The app stores authentication in a signed, HttpOnly session cookie and keeps
+the library and previews unavailable until unlocked. Static CSS and JavaScript
+remain public so the login dialog can load. No extra packages are required.
+Quote passwords that contain spaces or #; the .env loader does not expand shell
+variables. A missing or blank value disables authentication.
+The installer preserves existing .env files, so add this setting manually to
+enable it on an existing installation.
+
+Restart ledart-web after changing the password (or restart main.py for a manual
+run). Old sessions are rejected on subsequent requests. The Lock button clears
+the session; sessions also expire after 12 hours or on a server restart.
+Authentication retains the existing CSRF checks and adds them to login and
+logout forms. No password is embedded in HTML, JavaScript, or the session cookie.
+This is a casual-access gate; HTTP traffic remains unencrypted.
 
 Open http://ledmatrix.local:8080 from a device on the same LAN that supports mDNS.
 The alias may be a hostname such as matrix or matrix.local, using 1–63 ASCII
@@ -89,7 +110,7 @@ Choose a name unique on your network. An absent or blank LEDART_WEB_ALIAS disabl
 advertising. It does not change the Pi's system hostname or its existing address.
 
 After editing the alias, restart its service. Restart the WebUI after changing
-the bind address or port. No daemon-reload or reinstall is needed for .env edits:
+the bind address, port, or password. No daemon-reload or reinstall is needed for .env edits:
 
 ```bash
 sudo systemctl restart ledart-alias

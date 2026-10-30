@@ -16,7 +16,8 @@ fi
 for file in main.py led_backend/__init__.py led_backend/player.py led_backend/media_player.py \
     shared/__init__.py shared/config.py shared/settings.py web_server/__init__.py \
     web_server/app.py web_server/network_alias.py .env.example requirements.txt \
-    web_server/templates/index.html web_server/static/web_ui.css web_server/static/web_ui.js \
+    web_server/templates/index.html web_server/templates/login.html web_server/static/login.js \
+    web_server/static/web_ui.css web_server/static/web_ui.js \
     systemd/ledart.service systemd/ledart-web.service \
     systemd/ledart-alias.service systemd/ledart-web-storage.conf; do
     if [[ ! -f "$PROJECT_ROOT/$file" ]]; then
@@ -81,6 +82,7 @@ chmod u+rwx "$PROJECT_ROOT/Input"
 for file in main.py shared/__init__.py shared/config.py shared/settings.py \
     led_backend/__init__.py led_backend/media_player.py web_server/__init__.py \
     web_server/app.py web_server/network_alias.py .env web_server/templates/index.html \
+    web_server/templates/login.html web_server/static/login.js \
     web_server/static/web_ui.css web_server/static/web_ui.js ledenv/bin/python; do
     if ! runuser -u "$WEB_USER" -- test -r "$PROJECT_ROOT/$file"; then
         echo "$WEB_USER cannot read $PROJECT_ROOT/$file." >&2

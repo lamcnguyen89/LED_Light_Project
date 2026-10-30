@@ -33,7 +33,7 @@ class WebUITests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.folder = Path(self.temporary.name) / "Input"
-        self.app = create_app(self.folder, {"TESTING": True, "SECRET_KEY": "test-secret"})
+        self.app = create_app(self.folder, {"TESTING": True, "WEB_PASSWORD": "", "SECRET_KEY": "test-secret"})
         self.client = self.app.test_client()
         self.client.get("/")
         with self.client.session_transaction() as session:
@@ -207,7 +207,7 @@ class WebUITests(unittest.TestCase):
             response = self.client.get("/preview/" + name)
             self.assertEqual(response.status_code, 200)
             response.close()
-            other = create_app(self.folder, {"TESTING": True}).test_client()
+            other = create_app(self.folder, {"TESTING": True, "WEB_PASSWORD": ""}).test_client()
             item = next(item for item in other.get("/api/files").json["files"] if item["name"] == name)
             self.assertTrue(item["paused"])
             write_brightness(self.folder / SETTINGS_FILENAME, 90)

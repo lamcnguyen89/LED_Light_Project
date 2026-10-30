@@ -61,3 +61,11 @@ dialog::backdrop { background: #000a; }
 .duration-control label { font-size: 14px; }
 .duration-control input { width: 110px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--text); font: inherit; }
 #duration-status { min-height: 1.5em; }
+
+#logout-form { float: right; margin-top: 12px; }
+.locked-page { opacity: .5; }
+#login-dialog { margin: auto; }
+#password-form { margin-top: 20px; }
+#password-form label { display: block; margin-bottom: 8px; }
+#password { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--text); font: inherit; }
+.login-error { min-height: 1.5em; color: #ffd0c5; font-size: 14px; margin-top: 10px; }
