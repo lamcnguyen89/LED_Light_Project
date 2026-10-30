@@ -9,10 +9,9 @@ Type=simple
 # Installer chooses the invoking non-root user (or an unprivileged fallback).
 User=@WEB_USER@
 WorkingDirectory=@PROJECT_ROOT@
-Environment=LEDART_WEB_HOST=0.0.0.0
-Environment=LEDART_WEB_PORT=8080
-ExecStartPre="@PROJECT_ROOT@/ledenv/bin/python" -u "@PROJECT_ROOT@/web_ui.py" --check-storage
-ExecStart="@PROJECT_ROOT@/ledenv/bin/python" -u "@PROJECT_ROOT@/web_ui.py"
+# Defaults and project .env are read by the web server; systemd overrides still take precedence.
+ExecStartPre="@PROJECT_ROOT@/ledenv/bin/python" -u "@PROJECT_ROOT@/main.py" --service web --check-storage
+ExecStart="@PROJECT_ROOT@/ledenv/bin/python" -u "@PROJECT_ROOT@/main.py" --service web
 Restart=on-failure
 RestartSec=10
 UMask=0022

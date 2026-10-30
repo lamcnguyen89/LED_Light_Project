@@ -4,11 +4,11 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from led_settings import (
+from shared.settings import (
     DEFAULT_DISPLAY_SECONDS, SETTINGS_FILENAME,
     read_brightness, read_display_seconds, write_brightness, write_display_seconds,
 )
-from web_ui import create_app
+from web_server.app import create_app
 
 
 class DurationTests(unittest.TestCase):
@@ -56,7 +56,7 @@ class DurationTests(unittest.TestCase):
         self.assertEqual(self.client.post(
             "/api/display-seconds", json={"display_seconds": 30},
         ).status_code, 403)
-        with patch("web_ui.write_display_seconds", side_effect=PermissionError):
+        with patch("web_server.app.write_display_seconds", side_effect=PermissionError):
             self.assertEqual(self.save(30).status_code, 503)
 
     def test_invalid_settings_fall_back_and_writes_repair_them(self):
@@ -70,7 +70,7 @@ class DurationTests(unittest.TestCase):
     def test_failed_replace_preserves_both_settings(self):
         write_brightness(self.path, 90)
         write_display_seconds(self.path, 30)
-        with patch("led_settings.os.replace", side_effect=PermissionError):
+        with patch("shared.settings.os.replace", side_effect=PermissionError):
             with self.assertRaises(PermissionError):
                 write_display_seconds(self.path, 60)
         self.assertEqual(read_display_seconds(self.path), 30)

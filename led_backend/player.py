@@ -4,8 +4,9 @@ from time import monotonic, sleep
 from PIL import Image, ImageOps
 from rpi_ws281x import Color, PixelStrip
 
-from media_player import MEDIA_EXTENSIONS, is_media_file, play_media_file, wait_for_stop
-from led_settings import (
+from shared.config import INPUT_FOLDER
+from led_backend.media_player import MEDIA_EXTENSIONS, is_media_file, play_media_file, wait_for_stop
+from shared.settings import (
     DEFAULT_BRIGHTNESS, DEFAULT_DISPLAY_SECONDS, SETTINGS_FILENAME,
     BrightnessController, read_brightness, read_display_seconds, read_paused_files,
 )
@@ -24,7 +25,6 @@ LED_BRIGHTNESS = DEFAULT_BRIGHTNESS  # 0-255; used when no saved setting exists
 LED_INVERT = False
 LED_CHANNEL = 0
 
-INPUT_FOLDER = Path(__file__).resolve().parent / "Input"
 IMAGE_EXTENSIONS = {".bmp", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp"}
 SUPPORTED_EXTENSIONS = IMAGE_EXTENSIONS | MEDIA_EXTENSIONS
 DISPLAY_SECONDS = DEFAULT_DISPLAY_SECONDS  # Used when no saved duration exists

@@ -4,12 +4,12 @@ import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
-from led_settings import (
+from shared.settings import (
     DEFAULT_BRIGHTNESS, SETTINGS_FILENAME, BrightnessController,
     read_brightness, write_brightness,
 )
-from media_player import wait_for_stop
-from web_ui import create_app
+from led_backend.media_player import wait_for_stop
+from web_server.app import create_app
 
 
 class BrightnessTests(unittest.TestCase):
@@ -48,7 +48,7 @@ class BrightnessTests(unittest.TestCase):
 
     def test_csrf_and_storage_error(self):
         self.assertEqual(self.client.post("/api/brightness", json={"brightness": 0}).status_code, 403)
-        with patch("web_ui.write_brightness", side_effect=PermissionError):
+        with patch("web_server.app.write_brightness", side_effect=PermissionError):
             self.assertEqual(self.save(90).status_code, 503)
 
     def test_missing_or_invalid_file_keeps_current_value(self):
@@ -59,7 +59,7 @@ class BrightnessTests(unittest.TestCase):
 
     def test_failed_atomic_replace_preserves_old_setting_and_cleans_temp(self):
         write_brightness(self.path, 100)
-        with patch("led_settings.os.replace", side_effect=PermissionError):
+        with patch("shared.settings.os.replace", side_effect=PermissionError):
             with self.assertRaises(PermissionError):
                 write_brightness(self.path, 50)
         self.assertEqual(read_brightness(self.path), 100)
@@ -69,7 +69,7 @@ class BrightnessTests(unittest.TestCase):
         write_brightness(self.path, 0)
         strip = Mock()
         controller = BrightnessController(strip, self.path, 255)
-        with patch("media_player.monotonic", side_effect=[0, 0, .05, .1]), patch("media_player.sleep") as sleep:
+        with patch("led_backend.media_player.monotonic", side_effect=[0, 0, .05, .1]), patch("led_backend.media_player.sleep") as sleep:
             self.assertFalse(wait_for_stop(.1, lambda: controller.update() or False))
         strip.setBrightness.assert_called_once_with(0)
         strip.show.assert_called_once_with()
@@ -78,7 +78,7 @@ class BrightnessTests(unittest.TestCase):
     def test_poll_throttles_and_only_updates_changed_values(self):
         strip = Mock()
         controller = BrightnessController(strip, self.path, 255)
-        with patch("led_settings.monotonic", side_effect=[0, .01, .06, .12]):
+        with patch("shared.settings.monotonic", side_effect=[0, .01, .06, .12]):
             controller.update()
             write_brightness(self.path, 40)
             controller.update()

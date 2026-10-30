@@ -1,0 +1,26 @@
+[Unit]
+Description=LED art local network hostname alias
+Wants=network-online.target avahi-daemon.service
+After=network-online.target avahi-daemon.service
+RequiresMountsFor="@PROJECT_ROOT@"
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=@WEB_USER@
+WorkingDirectory=@PROJECT_ROOT@
+ExecStartPre="@PROJECT_ROOT@/ledenv/bin/python" -u "@PROJECT_ROOT@/main.py" --service alias --check-config
+ExecStart="@PROJECT_ROOT@/ledenv/bin/python" -u "@PROJECT_ROOT@/main.py" --service alias
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=15
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=full
+ProtectHome=false
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

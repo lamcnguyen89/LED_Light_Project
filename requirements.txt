@@ -19,3 +19,6 @@ opencv-python>=4.6.0
 # Browser media management, served by Waitress.
 Flask>=3.1,<4
 waitress>=3.0,<4
+
+# Project-root .env configuration for the WebUI and network alias service.
+python-dotenv>=1.0,<2

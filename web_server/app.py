@@ -1,4 +1,4 @@
-"""LAN media manager for the LED matrix. Start with: python web_ui.py."""
+"""LAN media manager for the LED matrix. Start with: python main.py --service web."""
 import argparse
 from io import BytesIO
 import os
@@ -12,15 +12,16 @@ from flask import Flask, abort, jsonify, render_template, request, send_file, se
 from PIL import Image, ImageOps, UnidentifiedImageError
 from werkzeug.exceptions import HTTPException
 from werkzeug.utils import secure_filename
-from media_player import VIDEO_EXTENSIONS
+from led_backend.media_player import VIDEO_EXTENSIONS
+from shared.config import INPUT_FOLDER, read_environment
 
-from led_settings import (
+from shared.settings import (
     SETTINGS_FILENAME, read_brightness, validate_brightness, write_brightness,
     read_display_seconds, validate_display_seconds, write_display_seconds,
     read_paused_files, write_media_paused,
 )
 
-# These image extensions match LED_Code.py; videos remain managed separately.
+# These image extensions match led_backend/player.py; videos remain managed separately.
 IMAGE_FORMATS = {
     ".bmp": "BMP", ".jpeg": "JPEG", ".jpg": "JPEG", ".png": "PNG",
     ".tif": "TIFF", ".tiff": "TIFF", ".webp": "WEBP", ".gif": "GIF",
@@ -90,7 +91,7 @@ def create_app(input_folder=None, config=None) -> Flask:
     )
     if config:
         app.config.update(config)
-    folder = Path(input_folder or Path(__file__).resolve().parent / "Input").resolve()
+    folder = Path(input_folder or INPUT_FOLDER).resolve()
     folder.mkdir(parents=True, exist_ok=True)
     app.config["INPUT_FOLDER"] = folder
     upload_lock = Lock()
@@ -310,16 +311,17 @@ def create_app(input_folder=None, config=None) -> Flask:
     return app
 
 
-def main():
+def main(argv=None):
+    environment = read_environment()
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--host", default=os.environ.get("LEDART_WEB_HOST", "0.0.0.0"))
-    parser.add_argument("--port", type=int, default=int(os.environ.get("LEDART_WEB_PORT", "8080")))
+    parser.add_argument("--host", default=environment.get("LEDART_WEB_HOST", "0.0.0.0"))
+    parser.add_argument("--port", type=int, default=environment.get("LEDART_WEB_PORT", "8080"))
     parser.add_argument(
         "--check-storage", action="store_true",
         help="Verify upload storage access and exit without starting the web server.",
     )
-    args = parser.parse_args()
-    folder = Path(__file__).resolve().parent / "Input"
+    args = parser.parse_args(argv)
+    folder = INPUT_FOLDER
     try:
         check_upload_storage(folder)
     except RuntimeError as exc:

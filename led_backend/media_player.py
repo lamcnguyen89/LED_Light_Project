@@ -4,7 +4,7 @@ from typing import Callable
 
 from PIL import Image, ImageOps, ImageSequence
 
-from led_settings import BRIGHTNESS_POLL_SECONDS
+from shared.settings import BRIGHTNESS_POLL_SECONDS
 
 
 GIF_EXTENSIONS = {".gif"}

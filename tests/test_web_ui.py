@@ -9,8 +9,8 @@ from urllib.parse import quote
 
 from PIL import Image
 
-from web_ui import check_upload_storage, create_app
-from led_settings import SETTINGS_FILENAME, read_paused_files, read_brightness, write_brightness
+from web_server.app import check_upload_storage, create_app
+from shared.settings import SETTINGS_FILENAME, read_paused_files, read_brightness, write_brightness
 
 
 def image_bytes(format="PNG", animated=False):
@@ -54,13 +54,13 @@ class WebUITests(unittest.TestCase):
         self.assertEqual(list(self.folder.iterdir()), [media])
 
     def test_storage_check_reports_read_only_filesystem(self):
-        with patch("web_ui.tempfile.TemporaryDirectory", side_effect=OSError(errno.EROFS, "Read-only file system")):
+        with patch("web_server.app.tempfile.TemporaryDirectory", side_effect=OSError(errno.EROFS, "Read-only file system")):
             with self.assertRaisesRegex(RuntimeError, "Upload storage check failed.*install_ledart"):
                 check_upload_storage(self.folder)
         self.assertEqual(list(self.folder.iterdir()), [])
 
     def test_storage_check_cleans_up_after_hard_link_failure(self):
-        with patch("web_ui.os.link", side_effect=PermissionError(errno.EACCES, "Permission denied")):
+        with patch("web_server.app.os.link", side_effect=PermissionError(errno.EACCES, "Permission denied")):
             with self.assertRaisesRegex(RuntimeError, "Upload storage check failed"):
                 check_upload_storage(self.folder)
         self.assertEqual(list(self.folder.iterdir()), [])
@@ -150,9 +150,9 @@ class WebUITests(unittest.TestCase):
         self.app.config["MAX_CONTENT_LENGTH"] = 100
         self.assertEqual(self.upload().status_code, 413)
         self.app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024
-        with patch("web_ui.MAX_PIXELS", 10):
+        with patch("web_server.app.MAX_PIXELS", 10):
             self.assertEqual(self.upload().status_code, 400)
-        with patch("web_ui.MAX_FRAMES", 1):
+        with patch("web_server.app.MAX_FRAMES", 1):
             self.assertEqual(self.upload("frames.gif", image_bytes("GIF", True)).status_code, 400)
         self.assertEqual(list(self.folder.iterdir()), [])
 
@@ -223,7 +223,7 @@ class WebUITests(unittest.TestCase):
         for value in (None, 1, "true", [], {}):
             self.assertEqual(self.client.post(url, json={"paused": value}, headers=self.headers).status_code, 400)
         self.assertEqual(self.client.post("/api/files/missing.png/pause", json={"paused": True}, headers=self.headers).status_code, 404)
-        with patch("web_ui.write_media_paused", side_effect=PermissionError):
+        with patch("web_server.app.write_media_paused", side_effect=PermissionError):
             self.assertEqual(self.client.post(url, json={"paused": True}, headers=self.headers).status_code, 503)
 
     def test_paused_video_can_be_unpaused_and_delete_clears_pause(self):

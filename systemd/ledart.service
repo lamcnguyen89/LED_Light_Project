@@ -9,7 +9,7 @@ Type=simple
 # GPIO18 PWM through rpi_ws281x requires root access.
 User=root
 WorkingDirectory=@PROJECT_ROOT@
-ExecStart="@PROJECT_ROOT@/ledenv/bin/python" -u "@PROJECT_ROOT@/LED_Code.py"
+ExecStart="@PROJECT_ROOT@/ledenv/bin/python" -u "@PROJECT_ROOT@/main.py" --service led
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal

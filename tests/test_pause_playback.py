@@ -6,13 +6,13 @@ import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
-from led_settings import SETTINGS_FILENAME, write_media_paused
+from shared.settings import SETTINGS_FILENAME, write_media_paused
 
 
 class PausePlaybackTests(unittest.TestCase):
     def setUp(self):
         spec = importlib.util.spec_from_file_location(
-            "pause_test_player", Path(__file__).resolve().parents[1] / "LED_Code.py",
+            "pause_test_player", Path(__file__).resolve().parents[1] / "led_backend" / "player.py",
         )
         self.player = importlib.util.module_from_spec(spec)
         with patch.dict(sys.modules, {"rpi_ws281x": Mock()}):
