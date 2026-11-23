@@ -45,7 +45,7 @@ class WebAuthenticationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'id="login-dialog"', response.data)
         self.assertIn(b'type="password"', response.data)
-        self.assertIn(b'<link rel="icon" href="/static/favicon.ico" type="image/x-icon">', response.data)
+        self.assertIn(b'<link rel="icon" href="/favicon.ico" type="image/x-icon">', response.data)
         self.assertNotIn(b'name="username"', response.data)
         self.assertNotIn(b'id="gallery"', response.data)
         self.assertNotIn(b"existing.png", response.data)
@@ -56,6 +56,33 @@ class WebAuthenticationTests(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertNotIn(b"test-password", response.data)
             response.close()
+
+    def test_bookmark_icons_are_public_and_cacheable(self):
+        for authenticated in (False, True):
+            if authenticated:
+                self.login()
+            page = self.client.get("/")
+            self.assertIn(b'<link rel="icon" href="/favicon.ico" type="image/x-icon">', page.data)
+            self.assertIn(b'<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">', page.data)
+            self.assertEqual(page.headers["Cache-Control"], "no-store")
+            for path, image_format in (
+                ("/favicon.ico", "ICO"), ("/static/favicon.ico", "ICO"),
+                ("/apple-touch-icon.png", "PNG"), ("/static/apple-touch-icon.png", "PNG"),
+            ):
+                with self.subTest(authenticated=authenticated, path=path):
+                    response = self.client.get(path)
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response.headers["Cache-Control"], "public, max-age=86400")
+                    with Image.open(BytesIO(response.data)) as image:
+                        self.assertEqual(image.format, image_format)
+                        if image_format == "PNG":
+                            self.assertEqual(image.size, (180, 180))
+                    etag = response.headers["ETag"]
+                    response.close()
+                    cached = self.client.get(path, headers={"If-None-Match": etag})
+                    self.assertEqual(cached.status_code, 304)
+                    self.assertEqual(cached.headers["Cache-Control"], "public, max-age=86400")
+                    cached.close()
 
     def test_title_icon_is_present_before_and_after_unlocking(self):
         icon = b'<img src="/static/favicon.ico" alt="" class="title-icon">'

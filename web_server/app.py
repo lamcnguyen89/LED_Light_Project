@@ -135,7 +135,7 @@ def create_app(input_folder=None, config=None) -> Flask:
             return
         # The locked index serves only the password dialog. Static assets contain
         # no private data and supply the dialog's stylesheet and script.
-        if request.endpoint in {"index", "login", "static"}:
+        if request.endpoint in {"index", "login", "static", "favicon", "apple_touch_icon"}:
             return
         return jsonify(error="Enter the password to unlock the LED media manager."), 401
 
@@ -158,7 +158,13 @@ def create_app(input_folder=None, config=None) -> Flask:
             "style-src 'self'; object-src 'none'; frame-ancestors 'none'; "
             "base-uri 'self'; form-action 'self'"
         )
-        if app.config["WEB_PASSWORD"] or request.path == "/" or request.path.startswith("/api/"):
+        public_icon = request.endpoint in {"favicon", "apple_touch_icon"} or (
+            request.endpoint == "static"
+            and (request.view_args or {}).get("filename") in {"favicon.ico", "apple-touch-icon.png"}
+        )
+        if public_icon and response.status_code in {200, 304}:
+            response.headers["Cache-Control"] = "public, max-age=86400"
+        elif app.config["WEB_PASSWORD"] or request.path == "/" or request.path.startswith("/api/"):
             response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -168,6 +174,14 @@ def create_app(input_folder=None, config=None) -> Flask:
         if error.code == 413:
             message = "The upload exceeds the 32 MiB request limit. Upload fewer or smaller files."
         return jsonify(error=message), error.code
+
+    @app.get("/favicon.ico")
+    def favicon():
+        return app.send_static_file("favicon.ico")
+
+    @app.get("/apple-touch-icon.png")
+    def apple_touch_icon():
+        return app.send_static_file("apple-touch-icon.png")
 
     @app.get("/")
     def index():
