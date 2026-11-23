@@ -45,6 +45,7 @@ class WebAuthenticationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'id="login-dialog"', response.data)
         self.assertIn(b'type="password"', response.data)
+        self.assertIn(b'<link rel="icon" href="/static/favicon.ico" type="image/x-icon">', response.data)
         self.assertNotIn(b'name="username"', response.data)
         self.assertNotIn(b'id="gallery"', response.data)
         self.assertNotIn(b"existing.png", response.data)
