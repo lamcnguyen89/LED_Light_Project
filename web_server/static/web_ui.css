@@ -47,6 +47,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 #message.error { color: #ffd0c5; border-color: #a35c4d; }
 .preview-error { font-size: 13px; color: #efb3a8; padding: 20px; text-align: center; }
 footer { font-size: 12px; border-top: 1px solid var(--line); margin-top: 48px; padding-top: 20px; }
+.footer-icon { height: 1em; width: auto; vertical-align: middle; margin-right: 4px; }
 dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 14px; width: min(440px, 90vw); padding: 28px; }
 dialog::backdrop { background: #000a; }
 #delete-description { overflow-wrap: anywhere; margin: 16px 0; }
