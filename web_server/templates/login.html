@@ -10,7 +10,10 @@
 <body>
   <main class="locked-page">
     <div class="eyebrow"><span class="indicator"></span> 20 × 15 LED MATRIX</div>
-    <h1>Midnight Machines: LED Matrix</h1>
+    <div class="title-container">
+      <img src="{{ url_for('static', filename='favicon.ico') }}" alt="" class="title-icon">
+      <h1>Midnight Machines: LED Matrix</h1>
+    </div>
     <p class="intro">Unlock your media library to manage the matrix.</p>
   </main>
   <dialog id="login-dialog" aria-labelledby="login-heading" aria-describedby="login-description" open>

@@ -50,11 +50,17 @@ class WebAuthenticationTests(unittest.TestCase):
         self.assertNotIn(b"existing.png", response.data)
         self.assertNotIn(b"test-password", response.data)
         self.assertNotIn("WWW-Authenticate", response.headers)
-        for path in ("/static/login.js", "/static/web_ui.css", "/static/web_ui.js"):
+        for path in ("/static/login.js", "/static/web_ui.css", "/static/web_ui.js", "/static/favicon.ico"):
             response = self.client.get(path)
             self.assertEqual(response.status_code, 200)
             self.assertNotIn(b"test-password", response.data)
             response.close()
+
+    def test_title_icon_is_present_before_and_after_unlocking(self):
+        icon = b'<img src="/static/favicon.ico" alt="" class="title-icon">'
+        self.assertIn(icon, self.client.get("/").data)
+        self.login()
+        self.assertIn(icon, self.client.get("/").data)
 
     def test_previews_and_api_routes_require_an_authenticated_session(self):
         routes = [
