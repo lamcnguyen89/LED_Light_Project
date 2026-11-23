@@ -5,7 +5,7 @@ main { max-width: 1160px; margin: auto; padding: 48px 28px 24px; }
 header { margin-bottom: 36px; }
 .eyebrow { color: var(--accent); font: 12px/1.5 ui-monospace, monospace; letter-spacing: .14em; display: flex; align-items: center; gap: 10px; }
 .indicator { width: 8px; height: 8px; background: var(--accent); box-shadow: 0 0 16px #9d4edd80; border-radius: 50%; }
-h1 { margin: 14px 0 8px; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.045em; font-weight: 650; }
+h1 { margin: 14px 0 8px; font-size: clamp(30px, 5vw, 48px); letter-spacing: -.045em; font-weight: 650; color: #ffd54f; }
 .title-container { display: flex; align-items: center; gap: 16px; }
 .title-icon { height: clamp(30px, 5vw, 48px); width: auto; }
 h2 { font-size: 20px; margin: 0; font-weight: 600; }
